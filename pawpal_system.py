@@ -61,8 +61,8 @@ class Owner:
         """Add a pet to this owner."""
         raise NotImplementedError
 
-    def get_all_tasks(self) -> list[Task]:
-        """Return every task across all of this owner's pets."""
+    def get_all_tasks(self) -> list[tuple[Pet, Task]]:
+        """Return every task across all of this owner's pets, paired with its pet."""
         raise NotImplementedError
 
 
@@ -71,10 +71,10 @@ class Scheduler:
 
     def __init__(self, owner: Owner) -> None:
         self.owner: Owner = owner
-        self.scheduled_tasks: list[Task] = []
-        self.skipped_tasks: list[Task] = []
+        self.scheduled_tasks: list[tuple[Pet, Task]] = []
+        self.skipped_tasks: list[tuple[Pet, Task]] = []
 
-    def generate_plan(self) -> list[Task]:
+    def generate_plan(self) -> list[tuple[Pet, Task]]:
         """Choose and order tasks that fit the owner's available time, by priority."""
         raise NotImplementedError
 

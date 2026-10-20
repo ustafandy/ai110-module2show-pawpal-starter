@@ -24,7 +24,14 @@ Three core actions a user should be able to perform:
 **b. Design changes**
 
 - Did your design change during implementation?
+
+  Yes. While reviewing the Phase 1 design, before writing any scheduling logic, I made one change.
+
 - If yes, describe at least one change and why you made it.
+
+  - **Issue:** `Owner.get_all_tasks()` returned a flat list of Tasks, and a Task does not know which Pet it belongs to. Once the tasks were passed to the Scheduler, the pet information was lost. With two pets that both have a "Feeding" task, the plan could not tell them apart.
+  - **Change:** Tasks now travel to the Scheduler as `(Pet, Task)` pairs. `Owner.get_all_tasks()`, `Scheduler.generate_plan()`, and the Scheduler's `scheduled_tasks` and `skipped_tasks` all use `list[tuple[Pet, Task]]`. I updated the UML to match and added a dependency from Scheduler to Pet. I chose pairs over adding a `pet_name` field to Task so the pet's name is not stored twice and cannot get out of sync.
+  - **Why it matters:** The plan has to say which pet each task is for, such as "Feeding (Mochi)". `explain_plan()` also needs the pet to explain why a task was scheduled or skipped. Keeping the pair means the Scheduler always has that information without searching through the Owner's pets to find where a task came from.
 
 ---
 
