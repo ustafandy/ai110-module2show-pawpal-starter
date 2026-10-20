@@ -4,8 +4,22 @@
 
 **a. Initial design**
 
+Three core actions a user should be able to perform:
+
+1. Enter basic information about themselves and their pet, such as their name, the pet's name and species, and how much time they have available for pet care today.
+2. Add and edit care tasks for a pet, such as a walk, feeding, or medication, giving each task a duration and a priority.
+3. Generate a daily care plan that fits their available time, ordered by priority, and see an explanation of why each task was included or left out.
+
 - Briefly describe your initial UML design.
+
+  My design has four classes. An Owner has zero or more Pets, and each Pet has zero or more Tasks. A Scheduler is created for one Owner and reaches the Tasks through that Owner's Pets. Owner, Pet, and Task are dataclasses because they mainly hold data. Scheduler is a regular class because it holds the planning behavior.
+
 - What classes did you include, and what responsibilities did you assign to each?
+
+  - **Owner**: stores the owner's name, how many minutes they have available for pet care, their preferences, and their pets. It can add a pet and collect every task across all pets, so the Scheduler has one place to get them.
+  - **Pet**: stores the pet's name, species, and its care tasks. It is responsible for adding and removing tasks and returning the tasks that are not yet done.
+  - **Task**: represents one care activity with a title, duration in minutes, priority (low, medium, or high), and whether it is completed. It can mark itself complete and turn its priority into a number so tasks can be sorted.
+  - **Scheduler**: builds the daily plan for an Owner. It chooses and orders tasks that fit the available time by priority, keeps track of which tasks were scheduled and which were skipped, and explains why.
 
 **b. Design changes**
 
