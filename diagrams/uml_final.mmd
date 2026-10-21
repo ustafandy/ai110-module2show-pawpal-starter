@@ -1,0 +1,56 @@
+classDiagram
+    %% PawPal+ final design (matches pawpal_system.py after Phases 2-5)
+    %% Tasks travel from Owner to Scheduler as (Pet, Task) pairs to keep pet context.
+
+    class Owner {
+        +str name
+        +int available_minutes
+        +list~str~ preferences
+        +list~Pet~ pets
+        +add_pet(pet: Pet) None
+        +get_all_tasks() list[tuple[Pet, Task]]
+    }
+
+    class Pet {
+        +str name
+        +str species
+        +list~Task~ tasks
+        +add_task(task: Task) None
+        +remove_task(title: str) None
+        +get_pending_tasks() list~Task~
+        +complete_task(task: Task) Optional~Task~
+    }
+
+    class Task {
+        +str title
+        +int duration_minutes
+        +str priority
+        +bool completed
+        +str time
+        +str frequency
+        +date due_date
+        +mark_complete() None
+        +next_occurrence() Optional~Task~
+        +priority_rank() int
+    }
+
+    class Scheduler {
+        +Owner owner
+        +list[tuple[Pet, Task]] scheduled_tasks
+        +list[tuple[Pet, Task]] skipped_tasks
+        +generate_plan() list[tuple[Pet, Task]]
+        +explain_plan() str
+        +sort_by_time(pairs) list[tuple[Pet, Task]]
+        +filter_tasks(pet_name, completed) list[tuple[Pet, Task]]
+        +detect_conflicts() list~str~
+    }
+
+    note for Task "time: HH:MM (24-hour, validated)\nfrequency: none | daily | weekly\npriority: low | medium | high"
+    note for Scheduler "generate_plan: pending tasks due today or earlier,\nhigh priority first, then shorter first, within available_minutes.\ndetect_conflicts: same due_date + exact start time only."
+
+    Owner "1" o-- "0..*" Pet : has
+    Pet "1" o-- "0..*" Task : has
+    Scheduler --> "1" Owner : plans for
+    Scheduler ..> Task : schedules
+    Scheduler ..> Pet : keeps pet context
+    Task ..> Task : next_occurrence creates
