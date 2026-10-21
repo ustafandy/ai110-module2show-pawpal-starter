@@ -99,14 +99,20 @@ Sample test output:
 
 ## 📐 Smarter Scheduling
 
-> Fill in once you've implemented scheduling logic.
+Each `Task` now also has a scheduled `time` (`"HH:MM"`, 24-hour), a `frequency` (`"none"`, `"daily"`, or `"weekly"`), and a `due_date`. All three have defaults, so older code like `Task("Walk", 30, "high")` still works. Every method below works across all of the owner's pets and returns `(Pet, Task)` pairs, so each task keeps its pet.
 
-| Feature | Method(s) | Notes |
-|---------|-----------|-------|
-| Task sorting | | e.g., by priority, duration |
-| Filtering | | e.g., skip tasks if time runs out |
-| Conflict handling | | e.g., overlapping time slots |
-| Recurring tasks | | e.g., daily vs. weekly |
+| Feature | Method(s) | Behavior |
+|---------|-----------|----------|
+| Task sorting | `Scheduler.sort_by_time()` | Orders tasks by `due_date`, then by `time`. Zero-padded `"HH:MM"` strings sort chronologically, so times are compared directly. Sorts all of the owner's tasks by default, or a list you pass in (for example, a filtered list). |
+| Filtering | `Scheduler.filter_tasks(pet_name=None, completed=None)` | Filters by pet name (case-insensitive), by completion status, or both. A filter left as `None` is not applied. Returns the original Task objects, not copies. |
+| Recurring tasks | `Task.next_occurrence()`, `Pet.complete_task(task)` | `complete_task` marks a task done and, for `"daily"` (+1 day) or `"weekly"` (+7 days) tasks, adds a new copy with the next `due_date` to the same pet. Completing an already-completed task does nothing, so repeated calls never create duplicates. `generate_plan()` only plans tasks due today or earlier, so tomorrow's copy is not added to today's plan. |
+| Conflict detection | `Scheduler.detect_conflicts()` | Groups unfinished tasks by `(due_date, time)` and returns a warning for every slot with more than one task, including tasks for different pets. It returns warnings instead of raising errors. Only exact start-time matches are detected; overlapping durations are not. |
+
+Example conflict warning from `python main.py`:
+
+```
+WARNING: Conflict on 2026-10-20 at 12:30: 'Feeding' (Biscuit), 'Give medication' (Mochi)
+```
 
 ## 📸 Demo Walkthrough
 

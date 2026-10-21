@@ -45,7 +45,14 @@ Three core actions a user should be able to perform:
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+
+  Conflict detection only checks for unfinished tasks with the exact same due date and start time, such as two tasks at 08:00 on the same day, even if they belong to different pets. It does not detect overlapping durations. For example, a 30-minute walk at 07:00 and a feeding at 07:15 overlap, but they are not reported as a conflict.
+
 - Why is that tradeoff reasonable for this scenario?
+
+  The most common scheduling mistake is booking two tasks for the same time. Checking exact start times catches that and keeps the logic simple and easy to test. Full overlap detection would need start and end times for every task, plus extra rules, for example for tasks one person can do at the same time. That was more than this phase needed.
+
+  I also compared other ways to write `detect_conflicts()`. Comparing every pair of tasks takes O(n²) time and reports three warnings when three tasks share a slot, instead of one. Sorting the tasks and then grouping neighbors with `itertools.groupby` is slightly shorter, but no faster, and it only works if the tasks are sorted first, which is easy to get wrong. I kept the current version, which groups tasks in a dictionary by `(due_date, time)`. It runs in roughly linear time and reads directly as "group tasks by time slot, then report any slot with more than one task." If I add overlap detection later, I would revisit this, because grouping by exact time cannot detect tasks that overlap.
 
 ---
 

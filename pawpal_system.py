@@ -6,10 +6,14 @@ Mirrors diagrams/uml.mmd. Tasks travel from Owner to Scheduler as
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
+from datetime import date, datetime, timedelta
 
 # Higher number = more important. Used to sort tasks.
 PRIORITY_RANKS = {"low": 1, "medium": 2, "high": 3}
+
+# How far ahead the next occurrence of a recurring task is scheduled.
+RECURRENCE_STEPS = {"none": None, "daily": timedelta(days=1), "weekly": timedelta(weeks=1)}
 
 
 @dataclass
@@ -20,10 +24,32 @@ class Task:
     duration_minutes: int
     priority: str  # "low", "medium", or "high"
     completed: bool = False
+    time: str = "08:00"  # scheduled start time, "HH:MM" (24-hour)
+    frequency: str = "none"  # "none", "daily", or "weekly"
+    due_date: date = field(default_factory=date.today)
+
+    def __post_init__(self) -> None:
+        """Validate the time and frequency, and normalize time to zero-padded HH:MM."""
+        try:
+            parsed = datetime.strptime(self.time, "%H:%M")
+        except ValueError:
+            raise ValueError(f"Invalid time '{self.time}'. Use HH:MM, e.g. 07:30.") from None
+        self.time = parsed.strftime("%H:%M")
+
+        self.frequency = self.frequency.lower()
+        if self.frequency not in RECURRENCE_STEPS:
+            raise ValueError(f"Unknown frequency '{self.frequency}'. Use none, daily, or weekly.")
 
     def mark_complete(self) -> None:
         """Mark this task as done."""
         self.completed = True
+
+    def next_occurrence(self) -> Task | None:
+        """Return a fresh copy of this task for its next due date, or None if it doesn't repeat."""
+        step = RECURRENCE_STEPS[self.frequency]
+        if step is None:
+            return None
+        return replace(self, completed=False, due_date=self.due_date + step)
 
     def priority_rank(self) -> int:
         """Return a numeric rank for the priority so tasks can be sorted."""
@@ -56,6 +82,20 @@ class Pet:
     def get_pending_tasks(self) -> list[Task]:
         """Return tasks that are not yet completed."""
         return [task for task in self.tasks if not task.completed]
+
+    def complete_task(self, task: Task) -> Task | None:
+        """Mark a task complete and, if it recurs, add and return its next occurrence.
+
+        Completing an already-completed task does nothing, so repeated calls
+        (e.g. Streamlit reruns) never create duplicate occurrences.
+        """
+        if task.completed:
+            return None
+        task.mark_complete()
+        next_task = task.next_occurrence()
+        if next_task is not None:
+            self.add_task(next_task)
+        return next_task
 
 
 @dataclass
@@ -90,7 +130,13 @@ class Scheduler:
         self.scheduled_tasks = []
         self.skipped_tasks = []
 
-        pending = [(pet, task) for pet, task in self.owner.get_all_tasks() if not task.completed]
+        # Only tasks due today (or overdue); future recurring occurrences wait their turn.
+        today = date.today()
+        pending = [
+            (pet, task)
+            for pet, task in self.owner.get_all_tasks()
+            if not task.completed and task.due_date <= today
+        ]
 
         # Highest priority first; among equal priorities, shorter tasks first.
         pending.sort(key=lambda pair: (-pair[1].priority_rank(), pair[1].duration_minutes))
@@ -128,3 +174,45 @@ class Scheduler:
             lines.append("- There are no pending tasks to schedule.")
 
         return "\n".join(lines)
+
+    def sort_by_time(
+        self, pairs: list[tuple[Pet, Task]] | None = None
+    ) -> list[tuple[Pet, Task]]:
+        """Return (Pet, Task) pairs ordered by due date, then scheduled HH:MM time.
+
+        Defaults to all of the owner's tasks. Zero-padded "HH:MM" strings sort
+        chronologically, so they can be compared directly.
+        """
+        if pairs is None:
+            pairs = self.owner.get_all_tasks()
+        return sorted(pairs, key=lambda pair: (pair[1].due_date, pair[1].time))
+
+    def filter_tasks(
+        self, pet_name: str | None = None, completed: bool | None = None
+    ) -> list[tuple[Pet, Task]]:
+        """Return (Pet, Task) pairs matching a pet name and/or completion status.
+
+        Leaving a filter as None means "don't filter on this".
+        """
+        return [
+            (pet, task)
+            for pet, task in self.owner.get_all_tasks()
+            if (pet_name is None or pet.name.lower() == pet_name.lower())
+            and (completed is None or task.completed == completed)
+        ]
+
+    def detect_conflicts(self) -> list[str]:
+        """Return a warning for each date/time slot shared by two or more pending tasks.
+
+        Only exact start-time matches are detected; overlapping durations are not.
+        """
+        slots: dict[tuple[date, str], list[tuple[Pet, Task]]] = {}
+        for pet, task in self.filter_tasks(completed=False):
+            slots.setdefault((task.due_date, task.time), []).append((pet, task))
+
+        warnings = []
+        for (due_date, time), pairs in sorted(slots.items()):
+            if len(pairs) > 1:
+                names = ", ".join(f"'{task.title}' ({pet.name})" for pet, task in pairs)
+                warnings.append(f"Conflict on {due_date} at {time}: {names}")
+        return warnings
