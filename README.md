@@ -42,16 +42,43 @@ pip install -r requirements.txt
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
 
+## 🧩 Implementation Summary
+
+The core logic lives in `pawpal_system.py`:
+
+- **Task** represents one care activity (title, duration, priority, completion status).
+- **Pet** stores a pet's details and manages its tasks (add, remove, list pending).
+- **Owner** manages multiple pets and exposes all of their tasks as `(Pet, Task)` pairs, so each task keeps its pet context.
+- **Scheduler** retrieves tasks through the Owner and builds the daily plan: it skips completed tasks, orders the rest by priority (shorter tasks first on ties), fits them into the owner's available minutes, and explains why each task was scheduled or skipped.
+
+`main.py` is a CLI demo with one owner and two pets, and `tests/test_pawpal.py` contains automated tests for the core behavior.
+
 ## 🖥️ Sample Output
 
-Paste a sample of your app's CLI or Streamlit output here so a reader can see what a generated plan looks like:
+Actual output from `python main.py`:
 
 ```
-# e.g.:
-# Daily plan for Biscuit (Golden Retriever):
-#   08:00 — Morning walk (30 min) [priority: high]
-#   09:00 — Feeding (10 min) [priority: high]
-#   ...
+==================================================
+Today's Schedule for Jordan's pets
+==================================================
+  08:00  Feeding            for Mochi    (5 min) [priority: high]
+  08:05  Feeding            for Biscuit  (10 min) [priority: high]
+  08:15  Morning walk       for Biscuit  (30 min) [priority: high]
+  08:45  Give medication    for Mochi    (5 min) [priority: medium]
+  08:50  Brush fur          for Mochi    (15 min) [priority: medium]
+
+Skipped (not enough time):
+  - Fetch in the yard for Biscuit (40 min)
+
+Why this plan:
+Jordan has 90 minutes available today.
+Tasks are chosen by priority (high first), then shorter tasks first.
+- Scheduled 'Feeding' for Mochi: high priority, 5 min (total so far: 5 min).
+- Scheduled 'Feeding' for Biscuit: high priority, 10 min (total so far: 15 min).
+- Scheduled 'Morning walk' for Biscuit: high priority, 30 min (total so far: 45 min).
+- Scheduled 'Give medication' for Mochi: medium priority, 5 min (total so far: 50 min).
+- Scheduled 'Brush fur' for Mochi: medium priority, 15 min (total so far: 65 min).
+- Skipped 'Fetch in the yard' for Biscuit: needs 40 min, but only 25 min were left.
 ```
 
 ## 🧪 Testing PawPal+
