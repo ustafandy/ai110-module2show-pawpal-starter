@@ -180,3 +180,49 @@ def test_detect_conflicts_ignores_completed_and_other_days():
     mochi.add_task(Task("Feeding", 5, "high", time="08:00", due_date=date(2026, 1, 16)))
 
     assert Scheduler(owner).detect_conflicts() == []
+
+
+# --- Phase 5: edge cases ---
+
+
+def test_sort_by_time_orders_by_date_before_time():
+    owner, biscuit, mochi = make_owner_with_two_pets()
+    biscuit.add_task(Task("Tomorrow walk", 30, "high", time="07:00", due_date=date(2026, 1, 16)))
+    mochi.add_task(Task("Tonight feeding", 5, "high", time="19:00", due_date=DAY))
+
+    ordered = Scheduler(owner).sort_by_time()
+
+    assert [task.title for _, task in ordered] == ["Tonight feeding", "Tomorrow walk"]
+
+
+def test_invalid_frequency_is_rejected_and_case_is_normalized():
+    with pytest.raises(ValueError):
+        Task("Walk", 30, "high", frequency="monthly")
+
+    assert Task("Walk", 30, "high", frequency="Daily").frequency == "daily"
+
+
+def test_task_that_exactly_fills_remaining_time_is_scheduled():
+    owner = Owner(name="Jordan", available_minutes=30)
+    pet = Pet(name="Biscuit", species="Dog")
+    owner.add_pet(pet)
+    pet.add_task(Task("Walk", 20, "high"))
+    pet.add_task(Task("Brush", 10, "low"))
+
+    scheduler = Scheduler(owner)
+    plan = scheduler.generate_plan()
+
+    assert [task.title for _, task in plan] == ["Walk", "Brush"]
+    assert scheduler.skipped_tasks == []
+
+
+def test_owner_with_pet_but_no_tasks_is_handled_gracefully():
+    owner = Owner(name="Jordan", available_minutes=60)
+    owner.add_pet(Pet(name="Biscuit", species="Dog"))
+    scheduler = Scheduler(owner)
+
+    assert scheduler.generate_plan() == []
+    assert scheduler.sort_by_time() == []
+    assert scheduler.filter_tasks(pet_name="Biscuit") == []
+    assert scheduler.detect_conflicts() == []
+    assert "no pending tasks" in scheduler.explain_plan()

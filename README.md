@@ -83,19 +83,41 @@ Tasks are chosen by priority (high first), then shorter tasks first.
 
 ## 🧪 Testing PawPal+
 
+Run the full test suite from the project root:
+
 ```bash
-# Run the full test suite:
-pytest
-
-# Run with coverage:
-pytest --cov
+python -m pytest
 ```
 
-Sample test output:
+The suite in `tests/test_pawpal.py` covers:
+
+- **Sorting:** `sort_by_time()` orders tasks by due date and then by time, across pets. It also checks that `"7:05"` is stored as `"07:05"` so the times sort correctly.
+- **Recurrence:** completing a daily or weekly task adds exactly one next occurrence (+1 day or +7 days, including across a month end). Completing a task twice doesn't create duplicates, one-time tasks don't repeat, and tomorrow's copy is left out of today's plan.
+- **Conflict detection:** pending tasks at the same date and time are flagged, including across pets. Completed tasks and tasks on other days are ignored.
+- **Scheduling:** tasks are planned by priority across all pets, completed tasks are skipped, and the plan stays within the available minutes. A task that exactly fills the remaining time is still scheduled.
+- **Filtering:** by pet name (case-insensitive), by completion status, or both.
+- **Edge cases and invalid input:** a pet with no tasks gives an empty plan with a clear explanation. Invalid times and unknown frequencies raise `ValueError`.
+
+Test output:
 
 ```
-# Paste your pytest output here
+============================= test session starts =============================
+platform win32 -- Python 3.13.0, pytest-9.1.1, pluggy-1.7.0
+collected 17 items
+
+tests\test_pawpal.py .................                                   [100%]
+
+============================= 17 passed in 0.08s ==============================
 ```
+
+**Confidence Level: ★★★★☆ (4/5)**
+
+Each core feature has tests for both the normal case and its key edge cases, using fixed dates so results are repeatable. It isn't 5 stars because of these known gaps:
+
+- Conflict detection only catches identical start times, not overlapping durations.
+- An invalid priority is only rejected when a plan is generated, not when the task is created.
+- `generate_plan()` depends on the real current date.
+- The Streamlit UI is not tested automatically.
 
 ## 📐 Smarter Scheduling
 
